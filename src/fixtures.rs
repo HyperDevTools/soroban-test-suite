@@ -1,6 +1,5 @@
 /// Test fixtures for common testing patterns
-
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 /// A basic test fixture with common setup
 pub struct BasicFixture<'a> {
