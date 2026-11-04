@@ -141,17 +141,21 @@ use soroban_test_suite::gas::*;
 fn test_gas_usage() {
     let env = Env::default();
     let test = TestContext::new(&env);
-    let tracker = GasTracker::new(&env);
+    let mut tracker = GasTracker::new(&env);
     
-    tracker.start();
+    tracker.start().expect("gas tracking should start");
     
     // Execute contract operation
     client.expensive_operation(&params);
     
-    let gas_used = tracker.stop();
-    
+    let usage = tracker.stop().expect("gas tracking should stop");
+
     // Assert gas usage is within acceptable range
-    assert!(gas_used < 1_000_000, "Gas usage too high: {}", gas_used);
+    assert!(
+        usage.cpu_instructions < 1_000_000,
+        "CPU usage too high: {}",
+        usage.cpu_instructions
+    );
 }
 ```
 

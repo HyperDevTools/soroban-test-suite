@@ -2,8 +2,6 @@
 /target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
-
 # IDE
 .vscode/
 .idea/

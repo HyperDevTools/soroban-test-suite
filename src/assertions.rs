@@ -23,7 +23,11 @@ macro_rules! assert_contract_gt {
         if $left <= $right {
             panic!(
                 "Assertion failed: {} - Expected {} > {}, but {} <= {}",
-                $msg, stringify!($left), stringify!($right), $left, $right
+                $msg,
+                stringify!($left),
+                stringify!($right),
+                $left,
+                $right
             );
         }
     };
@@ -39,7 +43,11 @@ macro_rules! assert_contract_gte {
         if $left < $right {
             panic!(
                 "Assertion failed: {} - Expected {} >= {}, but {} < {}",
-                $msg, stringify!($left), stringify!($right), $left, $right
+                $msg,
+                stringify!($left),
+                stringify!($right),
+                $left,
+                $right
             );
         }
     };

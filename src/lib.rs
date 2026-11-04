@@ -13,21 +13,10 @@ pub mod time;
 
 /// Re-export commonly used types and traits
 pub mod prelude {
-    pub use crate::assertions::*;
     pub use crate::context::TestContext;
     pub use crate::error::TestError;
     pub use crate::fixtures::*;
-    pub use crate::gas::GasTracker;
+    pub use crate::gas::{GasTracker, GasUsage};
     pub use crate::time::TimeController;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_library_imports() {
-        // Verify that the library compiles and basic imports work
-        assert!(true);
-    }
+    pub use crate::{assert_contract_eq, assert_contract_gt, assert_contract_gte};
 }

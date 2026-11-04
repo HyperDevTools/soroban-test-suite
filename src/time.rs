@@ -1,4 +1,4 @@
-use soroban_sdk::Env;
+use soroban_sdk::{testutils::Ledger as _, Env};
 
 /// Control time in contract tests
 pub struct TimeController<'a> {
@@ -18,24 +18,20 @@ impl<'a> TimeController<'a> {
 
     /// Advance time by the specified number of seconds
     pub fn advance(&self, seconds: u64) {
-        self.env.ledger().with_mut(|li| {
-            li.timestamp = li.timestamp.saturating_add(seconds);
-        });
+        let timestamp = self.now().saturating_add(seconds);
+        self.env.ledger().set_timestamp(timestamp);
     }
 
     /// Set time to a specific timestamp
     pub fn set(&self, timestamp: u64) {
-        self.env.ledger().with_mut(|li| {
-            li.timestamp = timestamp;
-        });
+        self.env.ledger().set_timestamp(timestamp);
     }
 
     /// Advance to the next ledger
     pub fn next_ledger(&self) {
-        self.env.ledger().with_mut(|li| {
-            li.sequence_number = li.sequence_number.saturating_add(1);
-            li.timestamp = li.timestamp.saturating_add(5); // Assume 5 second ledger time
-        });
+        let ledger = self.env.ledger();
+        ledger.set_sequence_number(ledger.sequence().saturating_add(1));
+        ledger.set_timestamp(self.now().saturating_add(5));
     }
 }
 

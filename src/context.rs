@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 /// TestContext provides a convenient environment for testing Soroban contracts
 pub struct TestContext<'a> {
