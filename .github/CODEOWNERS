@@ -1,0 +1,7 @@
+# Default owners for everything in the repository
+* @HyperDevTools
+
+# Security policy and CI workflows require explicit maintainer review
+/SECURITY.md @HyperDevTools
+/CONTRIBUTING.md @HyperDevTools
+/.github/ @HyperDevTools
