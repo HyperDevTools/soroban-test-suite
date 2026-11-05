@@ -1,314 +1,186 @@
 # Soroban Test Suite 🧪
 
-A comprehensive testing framework for Soroban smart contracts on Stellar. Write better tests with powerful assertions, mock utilities, and helpful test patterns.
+A lightweight testing helper crate for Soroban smart contracts on Stellar (`soroban-sdk = "21.0.0"`).
 
 ## 🎯 Overview
 
-Soroban Test Suite simplifies testing smart contracts by providing:
-- **Fluent Assertions**: Expressive, chainable assertions for contract behavior
-- **Mock Utilities**: Easy mocking of contract calls, storage, and events
-- **Test Fixtures**: Reusable test setups and common patterns
-- **Gas Tracking**: Monitor and assert on computational costs
-- **Event Testing**: Comprehensive event emission testing
-- **Time Manipulation**: Control time in tests for time-dependent contracts
-
-## 🚀 Features
-
-- ✅ **Rich Assertions** - Expressive assertions for accounts, balances, events, and storage
-- 🎭 **Mocking Support** - Mock external contract calls and dependencies
-- 📊 **Gas Analysis** - Track and optimize gas usage in tests
-- ⏰ **Time Control** - Fast-forward time for testing vesting, locks, etc.
-- 🔍 **Error Testing** - Test error conditions and failure paths easily
-- 📝 **Test Utilities** - Helpers for common testing patterns
-- 🎨 **Snapshot Testing** - Compare contract state across test runs
+`soroban-test-suite` provides ready-to-use helpers built on top of `soroban-sdk`'s `testutils`:
+- **Test Context (`TestContext`)**: Manage a Soroban `Env` reference and generate tracked test `Address` accounts.
+- **Contract Assertions (`assert_contract_eq!`, `assert_contract_gt!`, `assert_contract_gte!`)**: Expressive equality and comparison assertion macros with custom failure messages.
+- **Gas Budget Tracking (`GasTracker`, `GasUsage`)**: Snapshot and measure Soroban test budget CPU instructions and memory bytes across an interval.
+- **Ledger Time Manipulation (`TimeController`)**: Inspect and advance the Soroban ledger timestamp and sequence number.
+- **Reusable Test Fixtures (`BasicFixture`)**: Quickly provision an `admin` address and an indexed list of `users`.
 
 ## 📦 Installation
 
-Add to your `Cargo.toml`:
+Add `soroban-test-suite` and `soroban-sdk` (with `testutils` enabled) to your `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
 soroban-test-suite = "0.1"
-soroban-sdk = "21.0"
+soroban-sdk = { version = "21.0.0", features = ["testutils"] }
 ```
 
 ## 🔧 Quick Start
 
+Every snippet below matches the implemented crate APIs and compiles against `soroban-sdk = "21.0.0"`. You can also run the included Cargo example directly with:
+
+```bash
+cargo test --all-targets
+cargo run --example basic_contract_test
+```
+
 ```rust
-use soroban_sdk::{Env, testutils::Address as _};
+use soroban_sdk::{testutils::Address as _, Env};
 use soroban_test_suite::prelude::*;
 
 #[test]
-fn test_token_transfer() {
+fn quick_start_test() {
     let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    // Setup accounts
+    let mut test = TestContext::new(&env);
+
+    // Create tracked test accounts
     let alice = test.create_account();
     let bob = test.create_account();
-    
-    // Initialize contract
-    let contract = test.register_contract(token::WASM);
-    let client = token::Client::new(&env, &contract);
-    
-    // Mint tokens to Alice
-    client.mint(&alice, &1000);
-    
-    // Assert balance
-    test.assert_balance(&alice, &contract, 1000);
-    
-    // Transfer tokens
-    client.transfer(&alice, &bob, &500);
-    
-    // Assert final balances
-    test.assert_balance(&alice, &contract, 500);
-    test.assert_balance(&bob, &contract, 500);
+    assert_contract_eq!(test.accounts().len(), 2, "Two accounts should be tracked");
+
+    // Measure Soroban CPU and memory budget usage across an interval
+    let mut tracker = GasTracker::new(&env);
+    tracker.start().expect("gas tracking should start");
+    let _extra = soroban_sdk::Address::generate(&env);
+    let usage = tracker.stop().expect("gas tracking should stop");
+
+    assert_contract_gt!(usage.cpu_instructions, 0, "CPU instructions should be recorded");
+    assert_contract_gte!(usage.memory_bytes, 1, "Memory bytes should be at least 1");
+    assert_ne!(alice, bob);
 }
 ```
 
-## 📚 Documentation
+## 📚 Implemented API Guide
 
-### Test Context
+### 1. `TestContext` (`soroban_test_suite::context::TestContext`)
 
-The `TestContext` provides a convenient testing environment:
+`TestContext` wraps a `&Env` and tracks generated Soroban `Address` accounts:
+
+```rust
+use soroban_sdk::Env;
+use soroban_test_suite::prelude::*;
+
+#[test]
+fn context_example() {
+    let env = Env::default();
+    let mut ctx = TestContext::new(&env);
+
+    let admin = ctx.create_account();
+    let participants = ctx.create_accounts(3);
+
+    assert_contract_eq!(participants.len(), 3);
+    assert_contract_eq!(ctx.accounts().len(), 4);
+    assert_contract_eq!(ctx.accounts()[0], admin);
+}
+```
+
+### 2. Assertion Macros (`soroban_test_suite::assertions`)
+
+Use `assert_contract_eq!`, `assert_contract_gt!`, and `assert_contract_gte!` with default or custom diagnostic messages:
 
 ```rust
 use soroban_test_suite::prelude::*;
 
 #[test]
-fn example_test() {
-    let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    // Create test accounts
-    let admin = test.create_account();
-    let user1 = test.create_account();
-    let user2 = test.create_account();
-    
-    // Register contracts
-    let contract_id = test.register_contract(CONTRACT_WASM);
+fn assertions_example() {
+    let balance = 1_000_i128;
+    let minimum = 500_i128;
+
+    assert_contract_eq!(balance, 1_000);
+    assert_contract_eq!(balance, 1_000, "Initial balance must equal 1000");
+    assert_contract_gt!(balance, minimum, "Balance must exceed minimum");
+    assert_contract_gte!(balance, 1_000, "Balance must be at least 1000");
 }
 ```
 
-### Assertions
+### 3. `GasTracker` and `GasUsage` (`soroban_test_suite::gas`)
+
+Measure CPU instructions and memory bytes reported by `env.budget()` during a test interval:
 
 ```rust
-// Balance assertions
-test.assert_balance(&address, &token, 1000);
-test.assert_balance_gt(&address, &token, 500); // greater than
-test.assert_balance_gte(&address, &token, 500); // greater than or equal
-
-// Event assertions
-test.assert_event_emitted(&contract, "Transfer");
-test.assert_events_in_order(&contract, vec!["Mint", "Transfer", "Burn"]);
-
-// Storage assertions
-test.assert_storage_value(&contract, "counter", 42);
-test.assert_storage_exists(&contract, "initialized");
-
-// Error assertions
-test.assert_error(&|| {
-    client.unauthorized_operation(&user);
-}, ErrorCode::Unauthorized);
-```
-
-### Mocking
-
-```rust
-use soroban_test_suite::mock::*;
+use soroban_sdk::{testutils::Address as _, Env};
+use soroban_test_suite::prelude::*;
 
 #[test]
-fn test_with_mocks() {
+fn gas_tracking_example() {
     let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    // Mock external contract call
-    let oracle = test.mock_contract();
-    mock_call!(oracle, "get_price", || 12345);
-    
-    // Use in your contract tests
-    let price = oracle.get_price();
-    assert_eq!(price, 12345);
-}
-```
-
-### Gas Tracking
-
-```rust
-use soroban_test_suite::gas::*;
-
-#[test]
-fn test_gas_usage() {
-    let env = Env::default();
-    let test = TestContext::new(&env);
     let mut tracker = GasTracker::new(&env);
-    
+
     tracker.start().expect("gas tracking should start");
-    
-    // Execute contract operation
-    client.expensive_operation(&params);
-    
-    let usage = tracker.stop().expect("gas tracking should stop");
+    let _addr = soroban_sdk::Address::generate(&env);
+    let usage: GasUsage = tracker.stop().expect("gas tracking should stop");
 
-    // Assert gas usage is within acceptable range
-    assert!(
-        usage.cpu_instructions < 1_000_000,
-        "CPU usage too high: {}",
-        usage.cpu_instructions
-    );
+    assert_contract_gt!(usage.cpu_instructions, 0);
+    assert_contract_gt!(usage.memory_bytes, 0);
 }
 ```
 
-### Time Manipulation
+### 4. `TimeController` (`soroban_test_suite::time`)
+
+Manipulate the Soroban ledger timestamp and sequence number in time-dependent tests:
 
 ```rust
-use soroban_test_suite::time::*;
+use soroban_sdk::Env;
+use soroban_test_suite::prelude::*;
 
 #[test]
-fn test_time_lock() {
+fn time_control_example() {
     let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    // Initialize time-locked contract
-    let unlock_time = env.ledger().timestamp() + 86400; // 24 hours
-    client.create_lock(&user, &1000, &unlock_time);
-    
-    // Try to unlock early (should fail)
-    test.assert_error(&|| {
-        client.unlock(&user);
-    }, ErrorCode::Locked);
-    
-    // Fast forward 24 hours
-    test.advance_time(86400);
-    
-    // Now unlock should succeed
-    client.unlock(&user);
-    test.assert_balance(&user, &contract, 1000);
+    let time = TimeController::new(&env);
+
+    time.set(1_700_000_000);
+    assert_contract_eq!(time.now(), 1_700_000_000);
+
+    // Fast-forward 1 hour (3600 seconds)
+    time.advance(3_600);
+    assert_contract_eq!(time.now(), 1_700_003_600);
+
+    // Advance to the next ledger (+1 sequence number, +5 seconds)
+    let seq_before = env.ledger().sequence();
+    time.next_ledger();
+    assert_contract_eq!(env.ledger().sequence(), seq_before + 1);
+    assert_contract_eq!(time.now(), 1_700_003_605);
 }
 ```
 
-### Test Fixtures
+### 5. `BasicFixture` (`soroban_test_suite::fixtures`)
+
+Create a reusable fixture containing an `admin` account and `N` user accounts:
 
 ```rust
-use soroban_test_suite::fixtures::*;
-
-// Reusable test setup
-fn setup_defi_protocol() -> DeFiFixture {
-    let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    let admin = test.create_account();
-    let pool = test.register_contract(pool::WASM);
-    let token_a = test.register_token();
-    let token_b = test.register_token();
-    
-    DeFiFixture {
-        env,
-        test,
-        admin,
-        pool,
-        token_a,
-        token_b,
-    }
-}
+use soroban_sdk::Env;
+use soroban_test_suite::prelude::*;
 
 #[test]
-fn test_liquidity_pool() {
-    let fixture = setup_defi_protocol();
-    
-    // Test liquidity operations
-    fixture.pool.add_liquidity(&fixture.admin, &1000, &1000);
-    
-    fixture.test.assert_balance(&fixture.admin, &fixture.token_a, 0);
+fn fixture_example() {
+    let env = Env::default();
+    let fixture = BasicFixture::new(&env, 2);
+
+    assert_contract_eq!(fixture.users.len(), 2);
+    assert_ne!(&fixture.admin, fixture.user(0));
+    assert_ne!(fixture.user(0), fixture.user(1));
 }
 ```
 
-## 🧪 Testing Patterns
+## 📋 Roadmap (Not Yet Implemented)
 
-### Unit Tests
-
-```rust
-#[test]
-fn test_initialization() {
-    let env = Env::default();
-    let test = TestContext::new(&env);
-    let contract = test.register_contract(WASM);
-    
-    let admin = test.create_account();
-    contract.initialize(&admin);
-    
-    test.assert_storage_value(&contract, "admin", admin);
-}
-```
-
-### Integration Tests
-
-```rust
-#[test]
-fn test_multi_contract_interaction() {
-    let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    let token = test.register_contract(token::WASM);
-    let dex = test.register_contract(dex::WASM);
-    
-    // Test interaction between contracts
-    token.mint(&user, &1000);
-    token.approve(&user, &dex, &500);
-    dex.swap(&user, &token, &500);
-}
-```
-
-### Property-Based Tests
-
-```rust
-#[test]
-fn test_invariants() {
-    let env = Env::default();
-    let test = TestContext::new(&env);
-    
-    // Test that total supply is always conserved
-    for _ in 0..100 {
-        let amount = test.random_amount(1, 1000);
-        contract.transfer(&alice, &bob, &amount);
-        
-        let total = contract.balance(&alice) + contract.balance(&bob);
-        assert_eq!(total, INITIAL_SUPPLY);
-    }
-}
-```
+The following capabilities are planned roadmap items and are **not** part of the current `0.1.0` API:
+- [ ] Soroban contract registration & token balance assertion helpers on `TestContext`
+- [ ] Contract event & storage inspection assertions
+- [ ] Soroban-compatible contract dependency mocking (`src/mock.rs` currently provides only a minimal `MockContract` identifier struct)
+- [ ] Snapshot testing and property-based testing helpers
+- [ ] Fuzzing and coverage reporting integration
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## 📋 Roadmap
-
-- [ ] Snapshot testing support
-- [ ] Property-based testing helpers
-- [ ] Performance benchmarking utilities
-- [ ] Contract upgrade testing
-- [ ] Multi-chain testing support
-- [ ] Visual test reports
-- [ ] Fuzzing integration
-- [ ] Coverage reporting
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details
-
-## 🔗 Links
-
-- [Soroban Documentation](https://soroban.stellar.org/docs)
-- [Stellar Developers](https://developers.stellar.org/)
-- [Issue Tracker](https://github.com/HyperDevTools/soroban-test-suite/issues)
-
-## 💬 Support
-
-- Open an issue for bug reports or feature requests
-- Join our community discussions
-- Contribute to the codebase
-
----
-
-Made with ❤️ by HyperDevTools
+MIT License - see [LICENSE](LICENSE) for details.
