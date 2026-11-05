@@ -6,15 +6,20 @@ Thank you for your interest in contributing to Soroban Test Suite! We welcome co
 
 By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## 🔒 Security & Vulnerability Reporting
+
+- **Never report security vulnerabilities in public GitHub issues or pull requests.** Follow the private disclosure instructions in [SECURITY.md](SECURITY.md) (via [GitHub Security Advisories](https://github.com/HyperDevTools/soroban-test-suite/security/advisories/new) or `security@hyperdevtools.com`).
+- **No secrets in commits:** Never include Stellar secret keys (`S...`), seed phrases, API tokens, or credentials in code, tests, examples, or documentation. Use deterministic Soroban test generators such as `Address::generate(&env)` instead.
+
 ## 🚀 Getting Started
 
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/soroban-test-suite.git`
 3. Create a new branch: `git checkout -b feature/your-feature-name`
 4. Make your changes
-5. Run tests: `cargo test`
-6. Run linter: `cargo clippy -- -D warnings`
-7. Format code: `cargo fmt`
+5. Run all unit, integration, and example targets: `cargo test --all-targets`
+6. Run linter: `cargo clippy --all-targets -- -D warnings`
+7. Check formatting: `cargo fmt --all -- --check`
 8. Commit your changes: `git commit -m "feat: your feature description"`
 9. Push to your fork: `git push origin feature/your-feature-name`
 10. Open a Pull Request
@@ -32,85 +37,47 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 ## 🧪 Testing Requirements
 
-- All new features must include tests
-- All tests must pass: `cargo test`
-- Code must pass clippy: `cargo clippy -- -D warnings`
-- Code must be formatted: `cargo fmt --check`
-- Aim for comprehensive test coverage
+- All new features must include unit or integration tests
+- All targets must compile and pass: `cargo test --all-targets`
+- Code must pass clippy without warnings: `cargo clippy --all-targets -- -D warnings`
+- Code must be formatted: `cargo fmt --all -- --check`
 
-## 📋 Pull Request Process
+## 🔍 Security & Maintainer Review Process
 
-1. Update the README.md with details of changes if applicable
-2. Update the CHANGELOG.md with your changes
-3. Ensure all tests pass and code is formatted
-4. Link any related issues in your PR description
-5. Request review from maintainers
+Every pull request must be reviewed and approved by a maintainer listed in [`.github/CODEOWNERS`](.github/CODEOWNERS) before merge:
 
-## 🐛 Reporting Bugs
+1. **Dependency & Supply-Chain Review (`Cargo.toml`, `Cargo.lock`):**
+   - Avoid unnecessary new dependencies. Any dependency addition or version bump must justify why it is needed, use minimal feature flags, and avoid unvetted `build.rs` or proc-macro network/filesystem side effects.
+2. **Source & Workflow Review (`src/`, `examples/`, `.github/workflows/`):**
+   - Obfuscated code, unexplained binary blobs, arbitrary command execution, or changes that weaken CI permissions will be rejected immediately.
+   - Documentation and examples must match the actual implemented crate APIs without claiming unimplemented features.
+3. **Maintainer Branch-Protection Requirements:**
+   - Note that `.github/CODEOWNERS` alone does not enforce approval or block direct pushes unless repository branch protection (or a repository ruleset) is enabled on `main`.
+   - Maintainers should configure branch protection on `main` (**Settings → Branches → Branch protection rules** or **Settings → Rules → Rulesets**) with:
+     - **Require a pull request before merging** enabled
+     - **Require approvals** (at least 1) and **Require review from Code Owners** enabled
+     - **Dismiss stale pull request approvals when new commits are pushed** enabled
+     - **Require status checks to pass before merging** enabled (gating on the CI workflow)
+     - **Do not allow bypassing the above settings** / block force pushes and branch deletion on `main`
+   - Ensure **Private vulnerability reporting** is enabled under **Settings → Code security and analysis**.
 
-When reporting bugs, please include:
+## 📋 Pull Request Checklist
+
+1. Update `README.md` and examples if public APIs change
+2. Verify `cargo test --all-targets`, `cargo clippy --all-targets -- -D warnings`, and `cargo fmt --all -- --check` pass
+3. Confirm no secrets, credentials, or sensitive payloads are included in the diff
+4. Link the related issue in your PR description (`Closes #<issue>`)
+5. Wait for code-owner review and CI checks to complete
+
+## 🐛 Reporting Non-Security Bugs
+
+When reporting non-security bugs, please include:
 
 - A clear, descriptive title
 - Steps to reproduce the issue
-- Expected behavior
-- Actual behavior
-- Your environment (Rust version, OS, etc.)
-- Code samples if applicable
-
-## 💡 Suggesting Features
-
-We love new ideas! When suggesting features:
-
-- Check if it's already been suggested
-- Explain the use case clearly
-- Describe how it would work
-- Consider backward compatibility
-
-## 📚 Development Guidelines
-
-### Code Style
-
-- Follow Rust conventions and idioms
-- Use meaningful variable and function names
-- Keep functions focused and modular
-- Add documentation comments for public APIs
-- Run `cargo fmt` before committing
-
-### Writing Tests
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_example() {
-        // Arrange
-        let context = setup_test();
-        
-        // Act
-        let result = context.perform_action();
-        
-        // Assert
-        assert_eq!(result, expected_value);
-    }
-}
-```
-
-## 🎯 Good First Issues
-
-Look for issues labeled `good-first-issue` - these are great for new contributors!
-
-## 💬 Questions?
-
-Feel free to:
-- Open an issue with the `question` label
-- Join our community discussions
-- Reach out to maintainers
-
-## 🙏 Thank You!
-
-Every contribution, no matter how small, helps make Soroban Test Suite better!
+- Expected behavior vs. actual behavior
+- Your environment (`rustc --version`, OS, `soroban-sdk` version)
+- Minimal reproduction code
 
 ---
 
