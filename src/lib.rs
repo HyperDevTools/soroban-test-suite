@@ -17,6 +17,7 @@ pub mod prelude {
     pub use crate::error::TestError;
     pub use crate::fixtures::*;
     pub use crate::gas::{GasTracker, GasUsage};
+    pub use crate::mock::{MockContract, OnChainMockContract, OnChainMockContractClient};
     pub use crate::time::TimeController;
     pub use crate::{assert_contract_eq, assert_contract_gt, assert_contract_gte};
 }
