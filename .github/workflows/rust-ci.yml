@@ -44,5 +44,9 @@ jobs:
 
       - name: Audit locked dependencies
         run: |
-          cargo install cargo-audit --version 0.21.2 --locked
-          cargo audit --file Cargo.lock
+          # 0.22.x is required to parse the CVSS 4.0 entries in current advisories.
+          cargo install cargo-audit --version 0.22.2 --locked
+          # RUSTSEC-2026-0387: crypto-bigint 0.5.5 is pulled in transitively by
+          # soroban-env-host 21 (via k256/p256). No 0.5.x fix exists; the patched
+          # release is 0.7.6, which requires a soroban-sdk major upgrade.
+          cargo audit --file Cargo.lock --ignore RUSTSEC-2026-0387
