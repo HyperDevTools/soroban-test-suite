@@ -1,10 +1,4 @@
-//! Soroban-compatible contract mocking utilities for isolating external contract dependencies.
-//!
-//! Each [`MockContract`] registers an independent on-chain mock contract instance in a Soroban
-//! [`Env`] and stores deterministic call expectations and invocation counters in that contract's
-//! isolated instance storage. Unconfigured or unexpected calls fail explicitly with
-//! [`TestError::MockError`] (or panic when invoked cross-contract) rather than silently returning
-//! default values.
+//! Mock utilities for contract testing
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
