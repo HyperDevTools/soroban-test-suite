@@ -1,6 +1,10 @@
 # Soroban Test Suite 🧪
 
-A lightweight testing helper crate for Soroban smart contracts on Stellar (`soroban-sdk = "21.0.0"`).
+A Rust test-helper crate for Soroban smart contracts on Stellar, with fixture addresses, ledger-time controls, basic assertions, and CPU/memory budget measurements.
+
+**Documentation site:** [Soroban Test Suite field guide](https://hyperdevtools.github.io/soroban-test-suite/)
+
+> **Implementation note:** Some examples below describe planned helpers that are not in the current crate yet. In particular, contract mocking and balance/event/storage assertions are not implemented. See the [field guide](https://hyperdevtools.github.io/soroban-test-suite/) and current source before relying on an API.
 
 ## 🎯 Overview
 
