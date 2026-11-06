@@ -1,4 +1,4 @@
-/// Assertion utilities for Soroban contract testing
+//! Assertion utilities for Soroban contract testing
 
 /// Assert that two values are equal with a custom message
 #[macro_export]

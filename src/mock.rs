@@ -1,4 +1,4 @@
-/// Mock utilities for contract testing
+//! Mock contract placeholder.
 
 /// Placeholder for mock contract functionality
 pub struct MockContract {

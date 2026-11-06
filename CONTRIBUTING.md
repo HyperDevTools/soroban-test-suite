@@ -40,11 +40,10 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 ## 📋 Pull Request Process
 
-1. Update the README.md with details of changes if applicable
-2. Update the CHANGELOG.md with your changes
-3. Ensure all tests pass and code is formatted
-4. Link any related issues in your PR description
-5. Request review from maintainers
+1. Update the README or API documentation for user-facing changes
+2. Ensure tests pass, code is formatted, and Clippy reports no warnings
+3. Link any related issues in your PR description
+4. Request review from maintainers
 
 ## 🐛 Reporting Bugs
 
