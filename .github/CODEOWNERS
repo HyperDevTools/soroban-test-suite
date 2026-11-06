@@ -1,0 +1,18 @@
+# Code Owners for Soroban Test Suite
+# These owners are automatically requested for review when a pull request touches matching paths.
+
+# Default owner for all repository files
+* @Code-Kaybee
+
+# Crate manifests and lockfiles (supply-chain & dependency review)
+/Cargo.toml @Code-Kaybee
+/Cargo.lock @Code-Kaybee
+
+# Core library source and examples
+/src/ @Code-Kaybee
+/examples/ @Code-Kaybee
+
+# CI/CD workflows, ownership rules, and security policy
+/.github/ @Code-Kaybee
+/SECURITY.md @Code-Kaybee
+/CONTRIBUTING.md @Code-Kaybee

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A practical guide to the Soroban Test Suite's current contract-testing helpers.">
+    <title>Soroban Test Suite - Contract testing lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #e8eee8;
+        --muted: #a4b3a7;
+        --ground: #101714;
+        --panel: #18221d;
+        --line: #33463a;
+        --mint: #9af0b4;
+        --amber: #ffd58a;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--ground); color: var(--ink); line-height: 1.65; }
+      a { color: var(--mint); }
+      a:hover { color: white; }
+      .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+      header { border-bottom: 1px solid var(--line); }
+      .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 22px 0; }
+      .brand { color: var(--ink); font-weight: 800; letter-spacing: .04em; text-decoration: none; }
+      nav { display: flex; flex-wrap: wrap; gap: 20px; font-size: .88rem; }
+      .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 56px; padding: 84px 0 70px; align-items: center; }
+      .eyebrow { color: var(--mint); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; }
+      h1 { max-width: 760px; margin: 16px 0; font: 700 clamp(2.5rem, 6vw, 5rem)/1.04 system-ui, sans-serif; letter-spacing: -.055em; }
+      h2 { margin: 0 0 14px; font: 700 1.55rem/1.2 system-ui, sans-serif; }
+      h3 { margin: 0 0 8px; font-size: 1rem; }
+      p { color: var(--muted); }
+      .lead { max-width: 680px; font: 1.12rem/1.75 system-ui, sans-serif; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+      .button { display: inline-block; border: 1px solid var(--mint); border-radius: 4px; padding: 10px 15px; color: var(--mint); text-decoration: none; }
+      .button.primary { background: var(--mint); color: #102017; font-weight: 700; }
+      .specimen { border: 1px solid var(--line); background: var(--panel); padding: 22px; box-shadow: 10px 10px 0 #23352a; }
+      .specimen strong { color: var(--mint); }
+      .specimen dl { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 22px 0 0; font-size: .86rem; }
+      .specimen dt { color: var(--muted); }
+      .specimen dd { margin: 0; }
+      section { padding: 54px 0; border-top: 1px solid var(--line); }
+      .section-head { display: flex; justify-content: space-between; gap: 28px; align-items: end; margin-bottom: 24px; }
+      .section-head p { max-width: 520px; margin: 0; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .card { border: 1px solid var(--line); background: var(--panel); padding: 22px; }
+      .tag { color: var(--mint); font-size: .76rem; text-transform: uppercase; letter-spacing: .12em; }
+      pre { overflow-x: auto; margin: 0; border: 1px solid var(--line); background: #0b100d; padding: 22px; color: #dce8dc; font-size: .88rem; line-height: 1.6; }
+      code { color: var(--mint); }
+      .warning { border-left: 3px solid var(--amber); background: #282317; padding: 20px 24px; }
+      .warning h3 { color: var(--amber); }
+      .warning p { margin-bottom: 0; }
+      footer { border-top: 1px solid var(--line); padding: 28px 0 42px; color: var(--muted); font-size: .85rem; }
+      @media (max-width: 760px) {
+        .hero { grid-template-columns: 1fr; gap: 30px; padding: 58px 0; }
+        .grid { grid-template-columns: 1fr; }
+        .section-head { display: block; }
+        .topbar { align-items: flex-start; flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap topbar">
+        <a class="brand" href="#top">S T S / LAB NOTES</a>
+        <nav aria-label="Main navigation">
+          <a href="#workflow">Workflow</a>
+          <a href="#helpers">Helpers</a>
+          <a href="#boundaries">Current boundaries</a>
+          <a href="https://github.com/HyperDevTools/soroban-test-suite">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main id="top" class="wrap">
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Field guide / Soroban contract tests</div>
+          <h1>Test on ledger time, not production guesswork.</h1>
+          <p class="lead">Small Rust helpers for building repeatable Soroban tests: create fixture addresses, move ledger time, and measure contract budget use inside your existing test harness.</p>
+          <div class="actions">
+            <a class="button primary" href="#workflow">Read the quick start</a>
+            <a class="button" href="https://github.com/HyperDevTools/soroban-test-suite/issues">Browse issues</a>
+          </div>
+        </div>
+        <aside class="specimen" aria-label="Project capabilities">
+          <span class="tag">What this lab measures</span>
+          <dl>
+            <dt>Fixture accounts</dt><dd><strong>Available</strong></dd>
+            <dt>Ledger timestamp</dt><dd><strong>Controllable</strong></dd>
+            <dt>CPU / memory budget</dt><dd><strong>Measured</strong></dd>
+            <dt>Contract mocking</dt><dd>Placeholder</dd>
+          </dl>
+        </aside>
+      </div>
+
+      <section id="workflow">
+        <div class="section-head">
+          <div><div class="eyebrow">01 / Quick start</div><h2>Keep setup close to the test.</h2></div>
+          <p>These helpers work with a Soroban SDK <code>Env</code>; your contract registration and client calls remain your test's responsibility.</p>
+        </div>
+        <pre><code>use soroban_sdk::Env;
+use soroban_test_suite::prelude::*;
+
+#[test]
+fn test_accounts_and_time() {
+    let env = Env::default();
+    let mut context = TestContext::new(&amp;env);
+    let users = context.create_accounts(2);
+    assert_eq!(context.accounts().len(), 2);
+
+    let clock = TimeController::new(&amp;env);
+    let before = clock.now();
+    clock.advance(60);
+    assert_eq!(clock.now(), before + 60);
+    assert_ne!(users[0], users[1]);
+}</code></pre>
+        <p>Use the versions and feature flags declared by the repository's <a href="https://github.com/HyperDevTools/soroban-test-suite/blob/main/Cargo.toml">Cargo.toml</a>. Run your contract tests with the normal Cargo test workflow.</p>
+      </section>
+
+      <section id="helpers">
+        <div class="section-head">
+          <div><div class="eyebrow">02 / Toolkit</div><h2>Three useful building blocks.</h2></div>
+          <p>Each helper is deliberately test-scoped. The host SDK remains the source of truth for contract behavior and ledger semantics.</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <div class="tag">Fixture</div>
+            <h3>TestContext</h3>
+            <p>Create and retain generated addresses in one test context. Use <code>BasicFixture</code> when you need an admin address plus a set of users.</p>
+          </article>
+          <article class="card">
+            <div class="tag">Clock</div>
+            <h3>TimeController</h3>
+            <p>Read, set, or advance the test ledger timestamp; <code>next_ledger</code> also advances sequence and timestamp for time-dependent paths.</p>
+          </article>
+          <article class="card">
+            <div class="tag">Budget</div>
+            <h3>GasTracker</h3>
+            <p>Capture CPU instruction and memory usage around a measured section. Its start/stop lifecycle returns errors, so handle those results in your tests.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="boundaries">
+        <div class="section-head">
+          <div><div class="eyebrow">03 / Read before relying</div><h2>Know what is implemented.</h2></div>
+          <p>Some older README examples describe planned helpers rather than the current library surface. Check the source before building a test around an API.</p>
+        </div>
+        <div class="warning">
+          <h3>MockContract is not a working mock framework yet.</h3>
+          <p>The current <code>MockContract</code> is a placeholder. Contract registration, token-balance/event/storage assertions, and snapshot testing are not provided by the current implementation. This crate is for local testing, not production transaction signing or key management.</p>
+        </div>
+        <p>See the actual <a href="https://github.com/HyperDevTools/soroban-test-suite/tree/main/src">source modules</a>, open <a href="https://github.com/HyperDevTools/soroban-test-suite/issues">issues</a> for planned work, or read the <a href="https://developers.stellar.org/docs/build/smart-contracts">official Soroban documentation</a> for SDK and ledger behavior.</p>
+      </section>
+    </main>
+    <footer><div class="wrap">Soroban Test Suite | Open-source developer tooling | <a href="https://github.com/HyperDevTools/soroban-test-suite/blob/main/LICENSE">License</a></div></footer>
+  </body>
+</html>
