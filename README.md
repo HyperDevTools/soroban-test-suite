@@ -4,7 +4,7 @@ A Rust test-helper crate for Soroban smart contracts on Stellar, with fixture ad
 
 **Documentation site:** [Soroban Test Suite field guide](https://hyperdevtools.github.io/soroban-test-suite/)
 
-> **Implementation note:** Some examples below describe planned helpers that are not in the current crate yet. In particular, contract mocking and balance/event/storage assertions are not implemented. See the [field guide](https://hyperdevtools.github.io/soroban-test-suite/) and current source before relying on an API.
+> **Implementation note:** Contract mocking and balance/event/storage assertions are not implemented. See the [field guide](https://hyperdevtools.github.io/soroban-test-suite/) and current source before relying on an API.
 
 ## 🎯 Overview
 
@@ -17,11 +17,11 @@ A Rust test-helper crate for Soroban smart contracts on Stellar, with fixture ad
 
 ## 📦 Installation
 
-Add `soroban-test-suite` and `soroban-sdk` (with `testutils` enabled) to your `Cargo.toml`:
+The crate is not currently published on crates.io. Add it and `soroban-sdk` (with `testutils` enabled) to your `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
-soroban-test-suite = "0.1"
+soroban-test-suite = { git = "https://github.com/HyperDevTools/soroban-test-suite.git", branch = "main" }
 soroban-sdk = { version = "21.0.0", features = ["testutils"] }
 ```
 
