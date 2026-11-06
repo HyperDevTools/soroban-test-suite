@@ -1,6 +1,10 @@
 # Soroban Test Suite 🧪
 
-A comprehensive testing framework for Soroban smart contracts on Stellar. Write better tests with powerful assertions, mock utilities, and helpful test patterns.
+A Rust test-helper crate for Soroban smart contracts on Stellar, with fixture addresses, ledger-time controls, basic assertions, and CPU/memory budget measurements.
+
+**Documentation site:** [Soroban Test Suite field guide](https://hyperdevtools.github.io/soroban-test-suite/)
+
+> **Implementation note:** Some examples below describe planned helpers that are not in the current crate yet. In particular, contract mocking and balance/event/storage assertions are not implemented. See the [field guide](https://hyperdevtools.github.io/soroban-test-suite/) and current source before relying on an API.
 
 ## 🎯 Overview
 
