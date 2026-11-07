@@ -56,6 +56,108 @@ macro_rules! assert_contract_gte {
     };
 }
 
+/// Assert that a contract call fails with a particular typed error.
+///
+/// The expression is evaluated exactly once, so a call with side effects is safe
+/// to assert on. An unexpected success and a *different* error are separate
+/// failures with their own diagnostics, because "it failed" is not the same
+/// answer as "it failed the way the test is about".
+///
+/// The expectation is a pattern, not a string, so it is compared by type: pass
+/// `MyError::Unauthorized`, or the same with a `$msg` for the panic text.
+///
+/// `Env::try_invoke_contract` answers `Err(Ok(e))` when the contract failed and
+/// `Err(Err(..))` when the host could not convert that error, so both arms are
+/// covered and the second is reported as a host failure rather than being folded
+/// into the contract-error arm.
+///
+/// ```ignore
+/// let outcome = env.try_invoke_contract::<(), MyError>(
+///     &contract_id,
+///     &symbol_short!("withdraw"),
+///     vec![&env, amount.into_val(&env)],
+/// );
+/// assert_contract_err!(outcome, MyError::Unauthorized, "unfunded caller is rejected");
+/// ```
+#[macro_export]
+macro_rules! assert_contract_err {
+    ($call:expr, $expected:pat, $msg:expr) => {{
+        let message = $msg;
+        match $call {
+            Ok(Ok(_)) => panic!(
+                "Assertion failed: {} - Expected {}, but the call succeeded",
+                message,
+                stringify!($expected)
+            ),
+            Err(Ok(actual)) => {
+                if !matches!(actual, $expected) {
+                    panic!(
+                        "Assertion failed: {} - Expected {}, got {:?}",
+                        message,
+                        stringify!($expected),
+                        actual
+                    );
+                }
+            }
+            Err(Err(host_error)) => panic!(
+                "Assertion failed: {} - Expected {}, the host error could not be \
+                 converted into that error type: {:?}",
+                message,
+                stringify!($expected),
+                host_error
+            ),
+            Ok(Err(conversion_error)) => panic!(
+                "Assertion failed: {} - Expected {}, the success value could not be \
+                 converted: {:?}",
+                message,
+                stringify!($expected),
+                conversion_error
+            ),
+        }
+    }};
+    ($call:expr, $expected:pat) => {
+        assert_contract_err!($call, $expected, "Contract call should fail")
+    };
+}
+
+/// Assert that a contract call succeeds and return what it produced.
+///
+/// The counterpart to [`assert_contract_err!`]: it fails on a contract error or a
+/// host error and hands back the value, so a test reads as the shape it expects
+/// rather than unwrapping two nested `Result`s by hand.
+#[macro_export]
+macro_rules! assert_contract_ok {
+    ($call:expr) => {{
+        match $call {
+            Ok(Ok(value)) => value,
+            Err(Ok(contract_error)) => {
+                panic!("Assertion failed: Expected success, got contract error {:?}", contract_error)
+            }
+            Err(Err(host_error)) => {
+                panic!("Assertion failed: Expected success, host error could not be converted: {:?}", host_error)
+            }
+            Ok(Err(conversion_error)) => {
+                panic!("Assertion failed: Expected success, value could not be converted: {:?}", conversion_error)
+            }
+        }
+    }};
+    ($call:expr, $msg:expr) => {{
+        let message = $msg;
+        match $call {
+            Ok(Ok(value)) => value,
+            Err(Ok(contract_error)) => {
+                panic!("Assertion failed: {} - Expected success, got contract error {:?}", message, contract_error)
+            }
+            Err(Err(host_error)) => {
+                panic!("Assertion failed: {} - Expected success, host error could not be converted: {:?}", message, host_error)
+            }
+            Ok(Err(conversion_error)) => {
+                panic!("Assertion failed: {} - Expected success, value could not be converted: {:?}", message, conversion_error)
+            }
+        }
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
