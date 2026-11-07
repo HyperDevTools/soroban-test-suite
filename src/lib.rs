@@ -18,5 +18,8 @@ pub mod prelude {
     pub use crate::fixtures::*;
     pub use crate::gas::{GasTracker, GasUsage};
     pub use crate::time::TimeController;
-    pub use crate::{assert_contract_eq, assert_contract_gt, assert_contract_gte};
+    pub use crate::{
+        assert_contract_eq, assert_contract_err, assert_contract_gt, assert_contract_gte,
+        assert_contract_ok,
+    };
 }
