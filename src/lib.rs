@@ -4,6 +4,7 @@
 //! including assertions, mocking, gas tracking, and time manipulation.
 
 pub mod assertions;
+pub mod auth;
 pub mod context;
 pub mod error;
 pub mod fixtures;
@@ -13,6 +14,7 @@ pub mod time;
 
 /// Re-export commonly used types and traits
 pub mod prelude {
+    pub use crate::auth::{assert_auth_failure, expect_auths, ExpectedAuth};
     pub use crate::context::TestContext;
     pub use crate::error::TestError;
     pub use crate::fixtures::*;
