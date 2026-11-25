@@ -6,6 +6,7 @@
 pub mod assertions;
 pub mod context;
 pub mod error;
+pub mod events;
 pub mod fixtures;
 pub mod gas;
 pub mod mock;
@@ -15,8 +16,9 @@ pub mod time;
 pub mod prelude {
     pub use crate::context::TestContext;
     pub use crate::error::TestError;
+    pub use crate::events::{assert_event, assert_events_in_order, assert_no_event, ContractEvent};
     pub use crate::fixtures::*;
-    pub use crate::gas::{GasTracker, GasUsage};
+    pub use crate::gas::{BudgetLimits, GasTracker, GasUsage};
     pub use crate::time::TimeController;
     pub use crate::{assert_contract_eq, assert_contract_gt, assert_contract_gte};
 }

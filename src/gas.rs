@@ -11,6 +11,33 @@ pub struct GasUsage {
     pub memory_bytes: u64,
 }
 
+/// Inclusive limits on measured Soroban budget usage. A missing limit is ignored.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct BudgetLimits {
+    pub max_cpu_instructions: Option<u64>,
+    pub max_memory_bytes: Option<u64>,
+}
+
+impl GasUsage {
+    /// Check measured CPU and memory usage without changing the ledger budget.
+    pub fn assert_within(&self, limits: BudgetLimits) -> TestResult<()> {
+        let over_cpu = limits
+            .max_cpu_instructions
+            .is_some_and(|max| self.cpu_instructions > max);
+        let over_memory = limits
+            .max_memory_bytes
+            .is_some_and(|max| self.memory_bytes > max);
+
+        if over_cpu || over_memory {
+            return Err(TestError::AssertionFailed(format!(
+                "Soroban budget exceeded: measured {} CPU instructions and {} memory bytes; limits: {:?}",
+                self.cpu_instructions, self.memory_bytes, limits
+            )));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy)]
 struct BudgetSnapshot {
     cpu_instructions: u64,
@@ -110,6 +137,48 @@ mod tests {
         let mut tracker = GasTracker::new(&env);
 
         assert!(matches!(tracker.stop(), Err(TestError::InvalidState(_))));
+    }
+
+    #[test]
+    fn budget_limits_are_inclusive_and_independent() {
+        let usage = GasUsage {
+            cpu_instructions: 10,
+            memory_bytes: 20,
+        };
+
+        for limits in [
+            BudgetLimits {
+                max_cpu_instructions: Some(10),
+                max_memory_bytes: Some(20),
+            },
+            BudgetLimits {
+                max_cpu_instructions: Some(11),
+                max_memory_bytes: None,
+            },
+            BudgetLimits {
+                max_cpu_instructions: None,
+                max_memory_bytes: Some(21),
+            },
+        ] {
+            usage.assert_within(limits).unwrap();
+        }
+
+        for limits in [
+            BudgetLimits {
+                max_cpu_instructions: Some(9),
+                max_memory_bytes: None,
+            },
+            BudgetLimits {
+                max_cpu_instructions: None,
+                max_memory_bytes: Some(19),
+            },
+        ] {
+            let error = usage.assert_within(limits).unwrap_err();
+            assert!(matches!(&error, TestError::AssertionFailed(_)));
+            assert!(error
+                .to_string()
+                .contains("10 CPU instructions and 20 memory bytes"));
+        }
     }
 
     #[test]
