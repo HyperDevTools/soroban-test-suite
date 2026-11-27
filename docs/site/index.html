@@ -133,7 +133,7 @@ fn test_accounts_and_time() {
           <article class="card">
             <div class="tag">Clock</div>
             <h3>TimeController</h3>
-            <p>Read, set, or advance the test ledger timestamp; <code>next_ledger</code> also advances sequence and timestamp for time-dependent paths.</p>
+            <p>Read, set, or advance test ledger time. <code>next_ledger</code> updates the sequence and timestamp together and returns an error on overflow.</p>
           </article>
           <article class="card">
             <div class="tag">Budget</div>
@@ -150,7 +150,7 @@ fn test_accounts_and_time() {
         </div>
         <div class="warning">
           <h3>MockContract is not a working mock framework yet.</h3>
-          <p>The current <code>MockContract</code> is a placeholder. Contract registration, token-balance/event/storage assertions, and snapshot testing are not provided by the current implementation. This crate is for local testing, not production transaction signing or key management.</p>
+          <p>The current <code>MockContract</code> is a placeholder. For local contract tests, the crate provides event assertions by contract ID, topics, and payload. Storage assertions, token-balance helpers, and snapshot testing utilities are planned.</p>
         </div>
         <p>See the actual <a href="https://github.com/HyperDevTools/soroban-test-suite/tree/main/src">source modules</a>, open <a href="https://github.com/HyperDevTools/soroban-test-suite/issues">issues</a> for planned work, or read the <a href="https://developers.stellar.org/docs/build/smart-contracts">official Soroban documentation</a> for SDK and ledger behavior.</p>
       </section>

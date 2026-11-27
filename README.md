@@ -135,7 +135,7 @@ than at "it failed".
 
 ### 3. `GasTracker` and `GasUsage` (`soroban_test_suite::gas`)
 
-Measure CPU instructions and memory bytes reported by `env.budget()` during a test interval:
+Measure CPU instructions and memory bytes reported by `env.budget()` during a test interval. Apply inclusive limits to either or both resources with `BudgetLimits`.
 
 ```rust
 use soroban_sdk::{testutils::Address as _, Env};
@@ -150,14 +150,16 @@ fn gas_tracking_example() {
     let _addr = soroban_sdk::Address::generate(&env);
     let usage: GasUsage = tracker.stop().expect("gas tracking should stop");
 
-    assert_contract_gt!(usage.cpu_instructions, 0);
-    assert_contract_gt!(usage.memory_bytes, 0);
+    usage.assert_within(BudgetLimits {
+        max_cpu_instructions: Some(1_000_000),
+        max_memory_bytes: None,
+    }).expect("account creation should stay within the CPU budget");
 }
 ```
 
 ### 4. `TimeController` (`soroban_test_suite::time`)
 
-Manipulate the Soroban ledger timestamp and sequence number in time-dependent tests:
+Use the checked methods to move the ledger forward in time-dependent tests. `advance` and `next_ledger` return `TestError::InvalidState` on overflow, and `next_ledger` leaves both fields unchanged if either would overflow.
 
 ```rust
 use soroban_sdk::Env;
@@ -172,12 +174,12 @@ fn time_control_example() {
     assert_contract_eq!(time.now(), 1_700_000_000);
 
     // Fast-forward 1 hour (3600 seconds)
-    time.advance(3_600);
+    time.advance(3_600).expect("ledger timestamp should advance");
     assert_contract_eq!(time.now(), 1_700_003_600);
 
     // Advance to the next ledger (+1 sequence number, +5 seconds)
     let seq_before = env.ledger().sequence();
-    time.next_ledger();
+    time.next_ledger().expect("ledger sequence and timestamp should advance");
     assert_contract_eq!(env.ledger().sequence(), seq_before + 1);
     assert_contract_eq!(time.now(), 1_700_003_605);
 }
@@ -202,11 +204,15 @@ fn fixture_example() {
 }
 ```
 
+### 6. Contract event assertions
+
+Use `ContractEvent` to describe an expected contract ID, topic vector, and payload. Construct the values in the same `Env` as the contract under test. `assert_event` checks for a match and `assert_no_event` checks for its absence. `assert_events_in_order` compares the full event history and reports the index of the first missing, extra, or different event. See the [event tests](src/events.rs) for a contract that emits a bytes payload.
+
 ## 📋 Roadmap (Not Yet Implemented)
 
 The following capabilities are planned roadmap items and are **not** part of the current `0.1.0` API:
 - [ ] Soroban contract registration & token balance assertion helpers on `TestContext`
-- [ ] Contract event & storage inspection assertions
+- [ ] Contract storage inspection assertions
 - [ ] Soroban-compatible contract dependency mocking (`src/mock.rs` currently provides only a minimal `MockContract` identifier struct)
 - [ ] Snapshot testing and property-based testing helpers
 - [ ] Fuzzing and coverage reporting integration
