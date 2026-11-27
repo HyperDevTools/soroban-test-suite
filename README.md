@@ -103,6 +103,36 @@ fn assertions_example() {
 }
 ```
 
+#### Expecting a failure
+
+`assert_contract_err!` asserts that a call fails with a specific typed error, and
+`assert_contract_ok!` asserts that it succeeds and hands back the value. Both take the
+`Result` that `Env::try_invoke_contract` returns, so a negative-path test says which error it
+means instead of matching a string:
+
+```rust
+use soroban_sdk::{symbol_short, IntoVal};
+use soroban_test_suite::prelude::*;
+
+#[test]
+fn withdraw_rejects_an_unfunded_caller() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, MyContract);
+
+    let outcome = env.try_invoke_contract::<(), MyError>(
+        &contract_id,
+        &symbol_short!("withdraw"),
+        (caller, amount).into_val(&env),
+    );
+
+    assert_contract_err!(outcome, MyError::Unauthorized, "unfunded caller is rejected");
+}
+```
+
+The expression is evaluated once, and an unexpected success, a different error and a host-level
+failure each fail with their own message, so the diagnostic points at the wrong thing rather
+than at "it failed".
+
 ### 3. Expected Authorization (`soroban_test_suite::auth`)
 
 `ExpectedAuth` declares the credential a call should need, and `assert_auth_failure` proves the
