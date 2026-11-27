@@ -118,23 +118,25 @@ fn withdraw_requires_the_holder() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Vault);
     let holder = Address::generate(&env);
+    VaultClient::new(&env, &contract_id).deposit(&holder, &10);
 
     let declared = [ExpectedAuth::new(&holder, &contract_id, "withdraw")
         .with_args((holder.clone(), 10_i128).into_val(&env))];
 
     expect_auths(&env, &declared).expect("declaration applies");
-    let outcome = env.try_invoke_contract::<(), VaultError>(
+    let withdraw = || env.try_invoke_contract::<(), VaultError>(
         &contract_id,
         &symbol_short!("withdraw"),
         (holder.clone(), 10_i128).into_val(&env),
     );
+    let outcome = withdraw();
     assert!(matches!(outcome, Ok(Ok(()))), "{outcome:?}");
+
+    env.mock_auths(&[]);
+    assert_auth_failure(&env, withdraw, &declared).expect("the holder must authorize withdrawal");
 }
 ```
 
-Call `env.mock_auths(&[])` instead of `expect_auths` to run the same call with no credential at
-all, then `assert_auth_failure(&outcome, &declared)` to assert the rejection and get a message
-naming what was declared.
 
 **Why not `mock_all_auths`.** It accepts every `require_auth` in the invocation tree, so a
 missing check and an over-broad check look identical, and a test suite built on it passes after

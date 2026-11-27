@@ -9,6 +9,7 @@
 //! blanket mock is a test that cannot fail for the reason auth exists.
 
 use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
+use soroban_sdk::xdr::{ContractEventBody, ScError, ScVal};
 use soroban_sdk::{Address, Env, InvokeError, Val};
 
 use crate::error::{TestError, TestResult};
@@ -16,8 +17,7 @@ use crate::error::{TestError, TestResult};
 /// One authorization a test expects a call to require.
 ///
 /// Build it, apply it with [`ExpectedAuth::apply`] or [`expect_auths`], then call
-/// the contract. A call that does not ask for the declared authorization will fail,
-/// because nothing else is mocked.
+/// the contract. Authorization requests must match one of the entries you register.
 pub struct ExpectedAuth<'a> {
     address: &'a Address,
     contract: &'a Address,
@@ -83,23 +83,35 @@ pub fn expect_auths(env: &Env, auths: &[ExpectedAuth<'_>]) -> TestResult<()> {
             "expect_auths was given no expected authorization".to_string(),
         ));
     }
-    for auth in auths {
-        auth.apply(env);
-    }
+    let invokes: Vec<_> = auths
+        .iter()
+        .map(|auth| MockAuthInvoke {
+            contract: auth.contract,
+            fn_name: auth.fn_name,
+            args: auth.args.clone(),
+            sub_invokes: &auth.sub_invokes,
+        })
+        .collect();
+    let mocks: Vec<_> = auths
+        .iter()
+        .zip(&invokes)
+        .map(|(auth, invoke)| MockAuth {
+            address: auth.address,
+            invoke,
+        })
+        .collect();
+    env.mock_auths(&mocks);
     Ok(())
 }
 
 /// Assert that a call failed for lack of the authorization it should have needed.
 ///
 /// Reads the outcome of `Env::try_invoke_contract` after [`expect_auths`] has been
-/// given credentials deliberately short of what the call requires. Anything other
-/// than a host abort is a failure, and the message names both what was declared and
-/// what the call did instead.
-pub fn assert_auth_failure(
-    outcome: &Result<
-        Result<impl core::fmt::Debug, impl core::fmt::Debug>,
-        Result<impl core::fmt::Debug, InvokeError>,
-    >,
+/// given credentials deliberately short of what the call requires. The assertion uses
+/// new host diagnostics to distinguish authorization failures from unrelated aborts.
+pub fn assert_auth_failure<T: core::fmt::Debug, C: core::fmt::Debug, E: core::fmt::Debug>(
+    env: &Env,
+    invoke: impl FnOnce() -> Result<Result<T, C>, Result<E, InvokeError>>,
     declared: &[ExpectedAuth<'_>],
 ) -> TestResult<()> {
     let expectation = declared
@@ -113,16 +125,41 @@ pub fn assert_auth_failure(
         expectation
     };
 
-    match outcome {
-        Err(Err(InvokeError::Abort)) => Ok(()),
+    let before = env
+        .host()
+        .get_diagnostic_events()
+        .map_err(|error| {
+            TestError::SetupError(format!("could not read diagnostic events: {error:?}"))
+        })?
+        .0
+        .len();
+    match invoke() {
+        Err(Err(InvokeError::Abort)) => {
+            let events = env.host().get_diagnostic_events().map_err(|error| {
+                TestError::SetupError(format!("could not read diagnostic events: {error:?}"))
+            })?;
+            let last_error = events.0.iter().skip(before).rev().find_map(|event| {
+                let ContractEventBody::V0(body) = &event.event.body;
+                match body.topics.as_slice() {
+                    [ScVal::Symbol(name), ScVal::Error(error)] if name.0.as_slice() == b"error" => Some(error),
+                    _ => None,
+                }
+            });
+            if matches!(last_error, Some(ScError::Auth(_))) {
+                return Ok(());
+            }
+            Err(TestError::AssertionFailed(format!(
+                "expected authorization: {expectation} - the call aborted without an authorization error: {last_error:?}"
+            )))
+        }
         Err(Err(other)) => Err(TestError::AssertionFailed(format!(
             "expected authorization: {expectation} - the host failed with {other:?} rather than an auth abort"
         ))),
-        Err(Ok(host_error)) => Err(TestError::AssertionFailed(format!(
-            "expected authorization: {expectation} - the call failed at the host before authorization: {host_error:?}"
+        Err(Ok(contract_error)) => Err(TestError::AssertionFailed(format!(
+            "expected authorization: {expectation} - the call returned a contract error: {contract_error:?}"
         ))),
-        Ok(Err(contract_error)) => Err(TestError::AssertionFailed(format!(
-            "expected authorization: {expectation} - the call returned a contract error instead: {contract_error:?}"
+        Ok(Err(conversion_error)) => Err(TestError::AssertionFailed(format!(
+            "expected authorization: {expectation} - the success value could not be converted: {conversion_error:?}"
         ))),
         Ok(Ok(value)) => Err(TestError::AssertionFailed(format!(
             "expected authorization: {expectation} - the call succeeded, so the contract never required it: {value:?}"
@@ -163,7 +200,7 @@ mod tests {
         let contract = Address::generate(&env);
         let declared = [ExpectedAuth::new(&address, &contract, "ping")];
         let outcome: Result<Result<(), ()>, Result<(), InvokeError>> = Ok(Ok(()));
-        let error = assert_auth_failure(&outcome, &declared).unwrap_err();
+        let error = assert_auth_failure(&env, || outcome, &declared).unwrap_err();
         assert!(
             matches!(error, TestError::AssertionFailed(message) if message.contains("never required it"))
         );

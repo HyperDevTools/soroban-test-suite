@@ -32,6 +32,11 @@ impl Vault {
         Ok(())
     }
 
+    pub fn pair(first: Address, second: Address) {
+        first.require_auth();
+        second.require_auth();
+    }
+
     pub fn deposit(env: Env, to: Address, amount: i128) {
         let held: i128 = env.storage().instance().get(&to).unwrap_or(0);
         env.storage().instance().set(&to, &(held + amount));
@@ -75,8 +80,8 @@ fn no_authorization_fails_and_names_what_was_declared() {
     let declared = [ExpectedAuth::new(&holder, &id, "withdraw")];
     env.mock_auths(&[]);
 
-    let outcome = withdraw(&env, &id, &holder, 4);
-    assert_auth_failure(&outcome, &declared).expect("the call should be an auth failure");
+    assert_auth_failure(&env, || withdraw(&env, &id, &holder, 4), &declared)
+        .expect("the call should be an auth failure");
 }
 
 #[test]
@@ -94,12 +99,8 @@ fn a_different_address_fails_the_same_way_and_the_declaration_names_it() {
         .with_args((stranger.clone(), 4_i128).into_val(&env))];
     expect_auths(&env, &declared).expect("declaration applies");
 
-    let outcome = withdraw(&env, &id, &stranger, 4);
-    assert!(
-        matches!(outcome, Err(Err(InvokeError::Abort))),
-        "{outcome:?}"
-    );
-    assert_auth_failure(&outcome, &declared).expect("an auth failure is still an auth failure");
+    assert_auth_failure(&env, || withdraw(&env, &id, &stranger, 4), &declared)
+        .expect("an auth failure is still an auth failure");
 
     let described = declared[0].describe();
     assert!(described.contains(&format!("{holder:?}")), "{described}");
@@ -129,4 +130,39 @@ fn a_sub_invocation_can_be_declared() {
 
     let outcome = withdraw(&env, &id, &holder, 4);
     assert!(matches!(outcome, Ok(Ok(()))), "{outcome:?}");
+}
+#[test]
+fn every_declared_authorization_is_available_for_the_same_call() {
+    let env = Env::default();
+    let id = env.register_contract(None, Vault);
+    let first = Address::generate(&env);
+    let second = Address::generate(&env);
+    let args: soroban_sdk::Vec<soroban_sdk::Val> = (first.clone(), second.clone()).into_val(&env);
+    let declared = [
+        ExpectedAuth::new(&first, &id, "pair").with_args(args.clone()),
+        ExpectedAuth::new(&second, &id, "pair").with_args(args),
+    ];
+    expect_auths(&env, &declared).unwrap();
+    VaultClient::new(&env, &id).pair(&first, &second);
+}
+
+#[test]
+fn an_unrelated_abort_does_not_satisfy_the_assertion() {
+    let env = Env::default();
+    let id = env.register_contract(None, Vault);
+    let holder = Address::generate(&env);
+    let declared = [ExpectedAuth::new(&holder, &id, "withdraw")];
+    assert_auth_failure(&env, || withdraw(&env, &id, &holder, 4), &declared).unwrap();
+    let result = assert_auth_failure(
+        &env,
+        || {
+            env.try_invoke_contract::<(), VaultError>(
+                &id,
+                &symbol_short!("missing"),
+                soroban_sdk::Vec::new(&env),
+            )
+        },
+        &declared,
+    );
+    assert!(matches!(result, Err(TestError::AssertionFailed(_))));
 }
