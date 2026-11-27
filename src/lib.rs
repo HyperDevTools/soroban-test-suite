@@ -14,11 +14,17 @@ pub mod time;
 
 /// Re-export commonly used types and traits
 pub mod prelude {
+    pub use crate::assertions::{
+        assert_event_emitted, assert_event_not_emitted, assert_events_ordered, ExpectedEvent,
+    };
     pub use crate::context::TestContext;
     pub use crate::error::TestError;
     pub use crate::events::{assert_event, assert_events_in_order, assert_no_event, ContractEvent};
     pub use crate::fixtures::*;
     pub use crate::gas::{BudgetLimits, GasTracker, GasUsage};
     pub use crate::time::TimeController;
-    pub use crate::{assert_contract_eq, assert_contract_gt, assert_contract_gte};
+    pub use crate::{
+        assert_contract_eq, assert_contract_err, assert_contract_gt, assert_contract_gte,
+        assert_contract_ok,
+    };
 }
