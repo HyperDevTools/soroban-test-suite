@@ -133,7 +133,49 @@ The expression is evaluated once, and an unexpected success, a different error a
 failure each fail with their own message, so the diagnostic points at the wrong thing rather
 than at "it failed".
 
-### 3. `GasTracker` and `GasUsage` (`soroban_test_suite::gas`)
+### 3. Expected Authorization (`soroban_test_suite::auth`)
+
+`ExpectedAuth` declares the credential a call should need, and `assert_auth_failure` proves the
+call fails without it. Nothing is blanket mocked, so a contract that quietly stops calling
+`require_auth` fails these tests instead of passing them:
+
+```rust
+use soroban_sdk::IntoVal;
+use soroban_test_suite::prelude::*;
+
+#[test]
+fn withdraw_requires_the_holder() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Vault);
+    let holder = Address::generate(&env);
+    VaultClient::new(&env, &contract_id).deposit(&holder, &10);
+
+    let declared = [ExpectedAuth::new(&holder, &contract_id, "withdraw")
+        .with_args((holder.clone(), 10_i128).into_val(&env))];
+
+    expect_auths(&env, &declared).expect("declaration applies");
+    let withdraw = || env.try_invoke_contract::<(), VaultError>(
+        &contract_id,
+        &symbol_short!("withdraw"),
+        (holder.clone(), 10_i128).into_val(&env),
+    );
+    let outcome = withdraw();
+    assert!(matches!(outcome, Ok(Ok(()))), "{outcome:?}");
+
+    env.mock_auths(&[]);
+    assert_auth_failure(&env, withdraw, &declared).expect("the holder must authorize withdrawal");
+}
+```
+
+
+**Why not `mock_all_auths`.** It accepts every `require_auth` in the invocation tree, so a
+missing check and an over-broad check look identical, and a test suite built on it passes after
+a contract loses its authorization entirely. Use it to set state in a fixture (`deposit`,
+`mint`) and the helpers above on the paths under test. Declared auth is exact: the address,
+function and arguments are all part of the entry, so an argument the contract checks but the
+test declares differently will legitimately fail.
+
+### 4. `GasTracker` and `GasUsage` (`soroban_test_suite::gas`)
 
 Measure CPU instructions and memory bytes reported by `env.budget()` during a test interval:
 
@@ -155,7 +197,7 @@ fn gas_tracking_example() {
 }
 ```
 
-### 4. `TimeController` (`soroban_test_suite::time`)
+### 5. `TimeController` (`soroban_test_suite::time`)
 
 Manipulate the Soroban ledger timestamp and sequence number in time-dependent tests:
 
@@ -183,7 +225,7 @@ fn time_control_example() {
 }
 ```
 
-### 5. `BasicFixture` (`soroban_test_suite::fixtures`)
+### 6. `BasicFixture` (`soroban_test_suite::fixtures`)
 
 Create a reusable fixture containing an `admin` account and `N` user accounts:
 
